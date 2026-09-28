@@ -1,0 +1,7 @@
+title: "Backup Manager"
+eyebrow: SoloHost App
+description: "tạo app : Backup Manager ứng dụng quản lý backup dữ liệu, hỗ trợ tạo, kiểm tra, khôi phục và quản lý các bản sao lưu."
+footer_hint: Ready to run on Pi Desktop SoloHost.
+output_file: .env
+after_save: Saved. Start the app from SoloHost.
+fields: []

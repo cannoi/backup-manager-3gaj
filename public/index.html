@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backup Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+<style>.paf-made-by{position:fixed;right:8px;bottom:8px;width:min(72px,12vw);max-width:12vw;height:auto;object-fit:contain;opacity:.5;background:transparent;padding:0;border:0;box-shadow:none;filter:none;pointer-events:none;z-index:30}</style></head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+  <header class="bg-indigo-600 text-white shadow">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <h1 class="text-2xl font-bold flex items-center gap-2">
+        📦 Backup Manager
+      </h1>
+      <span class="text-xs bg-indigo-500 px-3 py-1 rounded-full uppercase tracking-wider font-semibold">SoloHost Ready</span>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white p-6 rounded-xl shadow border border-slate-100 flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-500 font-medium">Tổng số bản backup</p>
+          <h3 id="stat-count" class="text-3xl font-bold text-slate-700 mt-1">0</h3>
+        </div>
+        <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg text-2xl">🗂️</div>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow border border-slate-100 flex items-center justify-between">
+        <div>
+          <p class="text-sm text-slate-500 font-medium">Dung lượng lưu trữ</p>
+          <h3 id="stat-size" class="text-3xl font-bold text-slate-700 mt-1">0 MB</h3>
+        </div>
+        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg text-2xl">💾</div>
+      </div>
+    </div>
+
+    <!-- Actions & Form -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="bg-white p-6 rounded-xl shadow border border-slate-100 lg:col-span-1">
+        <h2 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">Tạo Backup Mới</h2>
+        <form id="backup-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">Tên bản backup</label>
+            <input type="text" id="name" required placeholder="vd: du-lieu-khach-hang" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-600 mb-1">Mô tả (tùy chọn)</label>
+            <textarea id="description" rows="3" placeholder="Mô tả chi tiết nội dung sao lưu..." class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+          </div>
+          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition">
+            Tiến hành Sao lưu
+          </button>
+        </form>
+      </div>
+
+      <div class="bg-white p-6 rounded-xl shadow border border-slate-100 lg:col-span-2 flex flex-col">
+        <h2 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">Danh sách bản sao lưu</h2>
+        <div class="overflow-x-auto flex-grow">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b text-sm text-slate-500">
+                <th class="py-2 px-3">Tên</th>
+                <th class="py-2 px-3">Dung lượng</th>
+                <th class="py-2 px-3">Trạng thái</th>
+                <th class="py-2 px-3">Thời gian tạo</th>
+                <th class="py-2 px-3 text-right">Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="backup-table" class="divide-y text-sm">
+              <tr><td colspan="5" class="text-center py-4 text-slate-400">Đang tải dữ liệu...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs Section -->
+    <div class="mt-8 bg-white p-6 rounded-xl shadow border border-slate-100">
+      <h2 class="text-lg font-bold mb-4 text-slate-800 border-b pb-2">Nhật ký hệ thống (Audit Logs)</h2>
+      <div class="overflow-x-auto max-h-60">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b text-sm text-slate-500">
+              <th class="py-2 px-3">Thời gian</th>
+              <th class="py-2 px-3">Hành động</th>
+              <th class="py-2 px-3">Chi tiết</th>
+              <th class="py-2 px-3">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table" class="divide-y text-sm">
+            <tr><td colspan="4" class="text-center py-4 text-slate-400">Chưa có nhật ký hoạt động.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t py-4 text-center text-xs text-slate-500 mt-auto">
+    
+  </footer>
+
+  <script>
+    async function loadData() {
+      try {
+        const [statsRes, backupsRes, logsRes] = await Promise.all([
+          fetch('/api/stats'),
+          fetch('/api/backups'),
+          fetch('/api/logs')
+        ]);
+        
+        const stats = await statsRes.json();
+        const backups = await backupsRes.json();
+        const logs = await logsRes.json();
+
+        document.getElementById('stat-count').innerText = stats.count;
+        document.getElementById('stat-size').innerText = (stats.total_size / (1024 * 1024)).toFixed(2) + ' MB';
+
+        const table = document.getElementById('backup-table');
+        if (backups.length === 0) {
+          table.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-400">Chưa có bản sao lưu nào.</td></tr>`;
+        } else {
+          table.innerHTML = backups.map(b => `
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-3 font-medium text-slate-800">${b.name}<br><span class="text-xs text-slate-400">${b.description || ''}</span></td>
+              <td class="py-3 px-3">${(b.file_size / 1024).toFixed(1)} KB</td>
+              <td class="py-3 px-3">
+                <span class="px-2 py-1 rounded-full text-xs font-semibold ${b.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' : b.status === 'Verified' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}">${b.status}</span>
+              </td>
+              <td class="py-3 px-3 text-slate-500">${new Date(b.created_at).toLocaleString()}</td>
+              <td class="py-3 px-3 text-right space-x-2">
+                <button onclick="verifyBackup(${b.id})" class="text-blue-600 hover:underline">Kiểm tra</button>
+                <button onclick="restoreBackup(${b.id})" class="text-emerald-600 hover:underline">Khôi phục</button>
+                <button onclick="deleteBackup(${b.id})" class="text-red-600 hover:underline">Xóa</button>
+              </td>
+            </tr>
+          `).join('');
+        }
+
+        const logsTable = document.getElementById('logs-table');
+        if (logs.length === 0) {
+          logsTable.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">Chưa có nhật ký hoạt động.</td></tr>`;
+        } else {
+          logsTable.innerHTML = logs.map(l => `
+            <tr class="hover:bg-slate-50">
+              <td class="py-2 px-3 text-slate-500">${new Date(l.created_at).toLocaleString()}</td>
+              <td class="py-2 px-3 font-medium text-slate-700">${l.action}</td>
+              <td class="py-2 px-3 text-slate-600">${l.details}</td>
+              <td class="py-2 px-3">
+                <span class="text-xs text-emerald-600 font-semibold">${l.status}</span>
+              </td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed to load data', err);
+      }
+    }
+
+    document.getElementById('backup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const description = document.getElementById('description').value;
+
+      const res = await fetch('/api/backups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description })
+      });
+
+      if (res.ok) {
+        document.getElementById('name').value = '';
+        document.getElementById('description').value = '';
+        loadData();
+      } else {
+        alert('Không thể tạo bản backup');
+      }
+    });
+
+    async function verifyBackup(id) {
+      const res = await fetch(`/api/backups/${id}/verify`, { method: 'POST' });
+      if (res.ok) loadData();
+    }
+
+    async function restoreBackup(id) {
+      const res = await fetch(`/api/backups/${id}/restore`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        alert(data.message);
+        loadData();
+      }
+    }
+
+    async function deleteBackup(id) {
+      if (!confirm('Bạn có chắc chắn muốn xóa bản backup này không?')) return;
+      const res = await fetch(`/api/backups/${id}`, { method: 'DELETE' });
+      if (res.ok) loadData();
+    }
+
+    loadData();
+    setInterval(loadData, 5000);
+  </script>
+<img class="paf-made-by" src="/made-by.png" alt="Made with App Builder — Pi SoloHost"></body>
+</html>
